@@ -10,13 +10,11 @@ import edu.wpi.first.wpilibj.RobotDrive;
 import edu.wpi.first.wpilibj.Spark;
 import edu.wpi.first.wpilibj.SpeedController;
 import edu.wpi.first.wpilibj.Timer;
-import edu.wpi.first.wpilibj.livewindow.LiveWindow;
-import edu.wpi.first.wpilibj.networktables.NetworkTable;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
-//Citadel class'i
-public class Robot extends IterativeRobot {
-	//Motor suruculerin initilize edilmesi 
+
+public class Robot_Temiz extends IterativeRobot {
+	//Motor suruculeri
 	Spark motorLeft1 = new Spark(2);
 	Spark motorLeft2 = new Spark(1);
 	Spark motorRight1 = new Spark(0);
@@ -26,25 +24,19 @@ public class Robot extends IterativeRobot {
 	Spark ballFeeder = new Spark(9); //degisicek
 	Spark ballThrow = new Spark(6); //degisicek
 	Jaguar gearTake = new Jaguar(8); //degisicek
-	ADXRS450_Gyro gyro; //Gyro dondurmek icin
-	static double kP = 0.03; //P of PID control
 	
-	//Tekerlekleri drive'a hazirliyor
+	ADXRS450_Gyro gyro;
+	static double kP = 0.03;
+	
 	RobotDrive myRobot = new RobotDrive(motorLeft1, motorLeft2, motorRight1, motorRight2);
 	Joystick stick = new Joystick(0);
-	Timer timerAutonomous = new Timer(); //bosta
-	Timer gearTimer = new Timer(); //bosta
+	Timer gearTimer = new Timer();
 	
-	NetworkTable table; //Kameradan value aliyor
-	double centerX; //2 reflectivin centeri
-	double area; //2 reflectivin arasindaki area
+	double leftStickX;
+	double leftStickY;
+	double rightStickX;
 	
-	double leftStickX; //Sol Joystickin X'i
-	double leftStickY; //Sol Joystickin Y'si
-	double rightStickX; //Sag Joystickin X'i
-	//double rightStickY; //axis 5 suanlik kullanilmiyor
-	
-	//Joystickin butonlarinin tanimlanmasi
+	//Joystickin butonlari
 	boolean buttonA;
 	boolean buttonB;
 	boolean buttonX;
@@ -137,43 +129,6 @@ public class Robot extends IterativeRobot {
 	@Override
 	public void robotInit() {
 		motorRight1.setInverted(true);
-		table = NetworkTable.getTable("GRIP/myContoursReport");
-	}
-
-	@Override
-	public void autonomousInit() {
-		timerAutonomous.reset();
-		timerAutonomous.start();
-	}
-
-	@Override
-	public void autonomousPeriodic() {
-		double[] defaultValue = new double[0]; //defaultValue array
-		double[] areas = table.getNumberArray("area", defaultValue); //area array
-		double[] centerXs = table.getNumberArray("centerX", defaultValue); //centerX array
-		
-		for (double a : areas) {
-			area = a;
-			SmartDashboard.putNumber("Area:", area); //for realtime feedback
-		}
-		for (double x : centerXs) {
-			centerX = x;
-			SmartDashboard.putNumber("Center X: ", centerX); //for realtime feedback
-		}
-		
-		
-		if(centerX >= 150 && centerX <= 170 && area <= 60000) { //Full area: 76800, camera is 320 x 240
-			myRobot.mecanumDrive_Cartesian(0, 0.2, 0, 0);
-		}
-		else if(centerX < 150 && area <= 60000){
-			myRobot.mecanumDrive_Cartesian(-0.1, 0, 0, 0);
-		}
-		else if(centerX > 170 && area <= 60000) {
-			myRobot.mecanumDrive_Cartesian(0.1, 0, 0, 0);
-		}
-		else {
-			myRobot.mecanumDrive_Cartesian(0, 0, 0, 0);
-		}
 	}
 
 	@Override
@@ -181,13 +136,11 @@ public class Robot extends IterativeRobot {
 		gyro = new ADXRS450_Gyro();
 		gyro.reset();
 		gearTimer.reset();
-		
 	}
 
 	@Override
 	public void teleopPeriodic() {
-		/*
-		SmartDashboard.putNumber("Gyro Angle:", gyro.getAngle()); //realtime feedback
+		SmartDashboard.putNumber("Gyro Angle:", gyro.getAngle());
 		
 		leftStickX = stick.getRawAxis(0); 
 		leftStickY = stick.getRawAxis(1); 
@@ -205,34 +158,18 @@ public class Robot extends IterativeRobot {
 		giveGear = stick.getRawButton(7); //button Back will make pneumatics drop the gear
 		takeGear = stick.getRawButton(8); //button Start will make pneumatics take the gear
 		
-			motorControlOnPress(ropeClimb, buttonRopeUp, forward, 1.0);
-			motorControlOnPress(ropeClimb, buttonRopeDown, backward, 1.0);
+		motorControlOnPress(ropeClimb, buttonRopeUp, forward, 1.0);
+		motorControlOnPress(ropeClimb, buttonRopeDown, backward, 1.0);
 
-			motorControlOnPress(ballThrow, buttonA, forward, 1.0); //basically a listener at this point
-			*/
-			gearControlOnPress(gearTake, buttonY, forward);
-			gearControlOnPress(gearTake, buttonY, backward);
-			/*
-			motorControlOnSwitch(ballPickUp, buttonX, false, 0.4);
-			motorControlOnSwitch(ballFeeder, buttonB, true, 0.4);
-			//gearControlPneumatics(solenoid, takeGear, forward);
-			//gearControlPneumatics(solenoid, giveGear, backward);
-		*/
-	}
-
-	public void testPeriodic() {
-		double[] defaultValue = new double[0]; //defaultValue array
-		double[] areas = table.getNumberArray("area", defaultValue); //area array
-		double[] centerXs = table.getNumberArray("centerX", defaultValue); //centerX array
+		motorControlOnPress(ballThrow, buttonA, forward, 1.0);
+			
+		gearControlOnPress(gearTake, buttonY, forward);
+		gearControlOnPress(gearTake, buttonY, backward);
+			
+		motorControlOnSwitch(ballPickUp, buttonX, false, 0.4);	
+		motorControlOnSwitch(ballFeeder, buttonB, true, 0.4);
 		
-		for (double a : areas) {
-			area = a;
-			SmartDashboard.putNumber("[Test] Area:", area); //for realtime feedback
-		}
-		for (double x : centerXs) {
-			centerX = x;
-			SmartDashboard.putNumber("[Test] Center X: ", centerX); //for realtime feedback
-		}
-		LiveWindow.run();
+		gearControlPneumatics(solenoid, takeGear, forward);
+		gearControlPneumatics(solenoid, giveGear, backward);
 	}
 }

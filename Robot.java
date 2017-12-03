@@ -1,7 +1,6 @@
 package org.usfirst.frc.team6303.robot;
 
 import edu.wpi.first.wpilibj.ADXRS450_Gyro;
-import edu.wpi.first.wpilibj.Compressor;
 import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.IterativeRobot;
 import edu.wpi.first.wpilibj.Jaguar;
@@ -10,77 +9,76 @@ import edu.wpi.first.wpilibj.RobotDrive;
 import edu.wpi.first.wpilibj.Spark;
 import edu.wpi.first.wpilibj.SpeedController;
 import edu.wpi.first.wpilibj.Timer;
-import edu.wpi.first.wpilibj.livewindow.LiveWindow;
+import edu.wpi.first.wpilibj.command.Command;
 import edu.wpi.first.wpilibj.networktables.NetworkTable;
+import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 //Citadel class'i
 public class Robot extends IterativeRobot {
-	//Motor suruculerin initilize edilmesi 
+	//Otonomda mode degistirmek icin dashboard'da arayuz hazirlanmasi
+	Command autonomousCommand;
+	SendableChooser autoChooser;
+	public int mode = 1;
+	
+	//Motor suruculeri
 	Spark motorLeft1 = new Spark(2);
 	Spark motorLeft2 = new Spark(1);
 	Spark motorRight1 = new Spark(0);
 	Spark motorRight2 = new Spark(3);
-	Spark ropeClimb = new Spark(7); //degisicek
-	Spark ballPickUp = new Spark(4); //degisicek
-	Spark ballFeeder = new Spark(9); //degisicek
-	Spark ballThrow = new Spark(6); //degisicek
-	Jaguar gearTake = new Jaguar(8); //degisicek
-	ADXRS450_Gyro gyro; //Gyro dondurmek icin
-	static double kP = 0.03; //P of PID control
+	Spark ropeClimb = new Spark(7);
+	Spark ballPickUp = new Spark(4);
+	Spark ballFeeder = new Spark(9);
+	Spark ballThrow = new Spark(6);
+
+	//Gyro ve gyro ile carptigimiz value
+	ADXRS450_Gyro gyro = new ADXRS450_Gyro();
+	double kP = 0.05;
 	
-	//Tekerlekleri drive'a hazirliyor
+	//Robot drive ve joystick
 	RobotDrive myRobot = new RobotDrive(motorLeft1, motorLeft2, motorRight1, motorRight2);
 	Joystick stick = new Joystick(0);
-	Timer timerAutonomous = new Timer(); //bosta
-	Timer gearTimer = new Timer(); //bosta
 	
-	NetworkTable table; //Kameradan value aliyor
-	double centerX; //2 reflectivin centeri
-	double area; //2 reflectivin arasindaki area
+	//Kamera'dan value almak icin
+	NetworkTable table;
+	double centerX;
+	double area;
 	
-	double leftStickX; //Sol Joystickin X'i
-	double leftStickY; //Sol Joystickin Y'si
-	double rightStickX; //Sag Joystickin X'i
-	//double rightStickY; //axis 5 suanlik kullanilmiyor
+	//Kumandanin'in sag ve sol cubuklarinin valuelari
+	double leftStickX;
+	double leftStickY;
+	double rightStickX;
 	
-	//Joystickin butonlarinin tanimlanmasi
+	//Kumandanin butonlarini
 	boolean buttonA;
 	boolean buttonB;
 	boolean buttonX;
 	boolean buttonY;
-	boolean buttonRopeUp; //R1
-	boolean buttonRopeDown; //L1
-	boolean takeGear; //Start
-	boolean giveGear; //Back
+	boolean triggerL1;
+	double triggerL2;
+	boolean triggerR1;
 	double triggerR2;
 	
 	//Ip & Gear gibi seylerde kolay anlasilsin diye
 	boolean forward = true;
 	boolean backward = false;
 	
-	boolean startStopCollect = false; //true for start, false for stop
-	boolean startStopFeed = false; //true for start, false for stop
+	//Top toplama ve beslemede on/off
+	boolean feedStartStop = false;
+	boolean pickupStartStop = false;
+	boolean throwStartStop = false;
 	
-	//Gear pinomatik sistemi
-	DoubleSolenoid solenoid = new DoubleSolenoid(1, 2);
-	Compressor comp = new Compressor();
+	//Otonomda her seyi sirasiyla yapsin diye kullanilan booleanlar
+	boolean auto1 = true;
+	boolean auto2 = true;
+	boolean auto3 = true;
+	boolean auto4 = true;
+	boolean auto5 = true;
 
-	
-	public void gearControlOnPress(SpeedController controller, boolean isPressed, boolean forwardOrBackward) {
-		if (isPressed && forwardOrBackward && gearTimer.get() < 0.5) //it takes 0.5 seconds to drop gear collection
-			controller.set(1.0);
-		
-		else if(isPressed && !forwardOrBackward && gearTimer.get() < 1.0) //it takes 1.0 second to pickup gear collection
-			controller.set(-1.0);
-		
-		else {
-			controller.set(0.0);
-			gearTimer.reset();
-			gearTimer.start();
-		}
-	}
-	
+	//Kullandigimiz timerlar
+	Timer timerAutonomous = new Timer();
+	Timer goTime = new Timer();
+	Timer feedThrow = new Timer();
 	
 	//Rope Climb & Ball Throw
 	public void motorControlOnPress(SpeedController controller, boolean isPressed, boolean forwardOrBackward, double speed) {
@@ -94,27 +92,18 @@ public class Robot extends IterativeRobot {
 			controller.set(0.0);
 	}
 	
-	
-	//Ball Feed & Ball Pickup
-	public void motorControlOnSwitch(SpeedController controller, boolean isPressed, boolean feedOrCollect, double speed) {
-		if(triggerR2 > 0.2) {
-			if(isPressed)
-				controller.set(-speed);
-			
-			else 
-				controller.set(speed);
-		}
+	public void throwBall(SpeedController controller, boolean isPressed, double speed) {
+		if(buttonX)
+			controller.set(-speed);
 		
 		else {
 			if(isPressed) {
-				if(feedOrCollect)
-					startStopFeed = !startStopFeed;
-				
-				else
-					startStopCollect = !startStopCollect;
+				throwStartStop = !throwStartStop;
+				feedThrow.reset();
+				feedThrow.start();
 			}
 			
-			if((feedOrCollect && startStopFeed) || (!feedOrCollect && startStopCollect))
+			if(throwStartStop)
 				controller.set(speed);
 			
 			else
@@ -122,117 +111,270 @@ public class Robot extends IterativeRobot {
 		}
 	}
 	
-	//Gear Pinomatik
-	public void gearControlPneumatics(DoubleSolenoid solenoid, boolean isPressed, boolean take) {
-		if(isPressed && take)
-			solenoid.set(DoubleSolenoid.Value.kForward);
+	
+	//Ball Feed & Ball Pickup
+	public void motorControlOnSwitch(SpeedController feed, SpeedController pickup, boolean feedIsPressed, boolean pickupIsPressed, double feedSpeed, double pickupSpeed, boolean feedAuto) {
+		//On/off yapiyor
+			if(buttonA)
+				feed.set(-feedSpeed);
 			
-		else if(isPressed && !take)
-			solenoid.set(DoubleSolenoid.Value.kReverse);
+			else if(feedIsPressed)
+				feedStartStop = !feedStartStop;
 			
-		else
-			solenoid.set(DoubleSolenoid.Value.kOff);
+			if((feedThrow.get() >= 0.5 && feedStartStop) || (feedThrow.get() >= 0.5 && feedAuto))
+				feed.set(feedSpeed);
+			
+			else
+				feed.set(0.0);
+			
+			
+			if(buttonB)
+				pickup.set(-pickupSpeed);
+			
+			else if(pickupIsPressed)
+				pickupStartStop = !pickupStartStop;
+			
+			if(pickupStartStop && !buttonB)
+				pickup.set(pickupSpeed);
+			
+			else
+				pickup.set(0.0);
+		
 	}
 	
 	@Override
 	public void robotInit() {
+		//Ters motorlari duzeltiyor
+		myRobot.setSafetyEnabled(false);
 		motorRight1.setInverted(true);
+		motorRight2.setInverted(true);
+
+		//Network Table kameradan value aliyor (GRIP'ten)
 		table = NetworkTable.getTable("GRIP/myContoursReport");
+
+		//Otonomda mod secme arayuzu olusturma
+		autoChooser = new SendableChooser();
+		autoChooser.addObject("bluenun solu/ redin sagi ama redde top atmiyor", 4); //degisecek
+		autoChooser.addDefault("direk duz gidiyor", 5); //degisecek
+		SmartDashboard.putData("Autonomous Mode Chooser", autoChooser);
 	}
 
 	@Override
 	public void autonomousInit() {
+		gyro.reset();
+		mode = (int) autoChooser.getSelected();
+
 		timerAutonomous.reset();
 		timerAutonomous.start();
 	}
 
 	@Override
 	public void autonomousPeriodic() {
-		double[] defaultValue = new double[0]; //defaultValue array
-		double[] areas = table.getNumberArray("area", defaultValue); //area array
-		double[] centerXs = table.getNumberArray("centerX", defaultValue); //centerX array
+
+		double[] defaultValue = new double[0];
+		double[] areas = table.getNumberArray("area", defaultValue);
+		double[] centerXs = table.getNumberArray("centerX", defaultValue);
 		
 		for (double a : areas) {
 			area = a;
 			SmartDashboard.putNumber("Area:", area); //for realtime feedback
-		}
+		}                    
 		for (double x : centerXs) {
 			centerX = x;
 			SmartDashboard.putNumber("Center X: ", centerX); //for realtime feedback
 		}
 		
-		
-		if(centerX >= 150 && centerX <= 170 && area <= 60000) { //Full area: 76800, camera is 320 x 240
-			myRobot.mecanumDrive_Cartesian(0, 0.2, 0, 0);
-		}
-		else if(centerX < 150 && area <= 60000){
-			myRobot.mecanumDrive_Cartesian(-0.1, 0, 0, 0);
-		}
-		else if(centerX > 170 && area <= 60000) {
-			myRobot.mecanumDrive_Cartesian(0.1, 0, 0, 0);
-		}
-		else {
-			myRobot.mecanumDrive_Cartesian(0, 0, 0, 0);
-		}
+		//NOT: caseleri switch halinde yazarsak daha temiz gorunur orn: switch(int a) case 1: ilk sey (bitince a++) case 2: ikinci sey.......
+		switch (mode) { //autoChooser.getSelected() 
+		/*case 1:
+			if(auto1) {
+				if(timerAutonomous.get() < 1.0) { //degisecek
+					myRobot.mecanumDrive_Cartesian(0, 0.2, 0, 0);
+				}
+
+				else {
+					if(centerX >= 150 && centerX <= 170 && area <= 60000 && area >= 100) //Full area: 76800, camera is 320 x 240
+						myRobot.mecanumDrive_Cartesian(0, 0.2, 0, 0);
+
+					else if(centerX < 150 && area <= 60000 && area >= 100)
+						myRobot.mecanumDrive_Cartesian(-0.2, 0, 0, 0);
+
+					else if(centerX > 170 && area <= 60000 && area >= 100)
+						myRobot.mecanumDrive_Cartesian(0.2, 0, 0, 0);
+
+					else 
+						auto1 = false;
+				}
+			}
+
+			else {
+				if(auto2) {
+					if(auto3) {
+						goTime.reset();
+						goTime.start();
+						auto3 = false;
+					}
+
+					else {
+						if(goTime.get() <= 3.0 && goTime.get() >= 2.0) //degisecek 2 saniye orada durucak
+							myRobot.mecanumDrive_Cartesian(0, -0.2, 0, 0);
+
+						else
+							auto2 = false;
+					}
+				}
+
+				else {
+					if(gyro.getAngle() <= 90)
+						myRobot.mecanumDrive_Cartesian(0, 0, 0.2, 0);
+
+					else {
+						if(auto4) {
+							goTime.reset();
+							goTime.start();
+							auto4 = false;
+						}
+
+						else {
+							if(goTime.get() < 3) //degisecek
+									myRobot.mecanumDrive_Cartesian(0.2, 0, 0, 0);
+
+							else {
+								if(gyro.getAngle() <= 135) 
+									myRobot.mecanumDrive_Cartesian(0, 0, 0.2, 0);
+
+								else {
+									myRobot.mecanumDrive_Cartesian(0, 0, 0, 0);
+									motorControlOnSwitch(ballFeeder, ballThrow, true, true, 0.4, 1.0, true);
+								}
+							}
+						}
+					}
+				}
+			}
+			break;
+
+		case 2:
+			//ters tarafin frontu
+			break;
+
+		case 3:
+			if(auto1) {
+				if(timerAutonomous.get() <= 2.0) { //degisecek
+					myRobot.mecanumDrive_Cartesian(0, 0.2, 0, 0);
+				}
+
+				else if(gyro.getAngle() >= -45){ //degisecek
+					myRobot.mecanumDrive_Cartesian(0, 0, -0.2, 0);
+				}
+
+				else {
+					if(centerX >= 150 && centerX <= 170 && area <= 60000 && area >= 100) //Full area: 76800, camera is 320 x 240
+						myRobot.mecanumDrive_Cartesian(0, 0.2, 0, 0);
+
+					else if(centerX < 150 && area <= 60000 && area >= 100)
+						myRobot.mecanumDrive_Cartesian(-0.2, 0, 0, 0);
+
+					else if(centerX > 170 && area <= 60000 && area >= 100)
+						myRobot.mecanumDrive_Cartesian(0.2, 0, 0, 0);
+
+					else 
+						auto1 = false;
+				}
+			}
+
+			else {
+				if(auto2) {
+					if(auto3) {
+						goTime.reset();
+						goTime.start();
+						auto3 = false;
+					}
+
+					else {
+						if(goTime.get() <= 3.0 && goTime.get() >= 2.0) //degisecek 2 saniye orada durucak
+							myRobot.mecanumDrive_Cartesian(0, -0.2, 0, 0);
+
+						else
+							auto2 = false;
+					}
+				}
+
+				else {
+					if(gyro.getAngle() <= 180)
+						myRobot.mecanumDrive_Cartesian(0, 0, 0.2, 0);
+
+					else
+						motorControlOnSwitch(ballFeeder, ballThrow, true, true, 0.4, 1.0, true);
+				}
+			}
+			break;
+*/
+		case 4:
+			if(timerAutonomous.get() < 2.6) {
+				myRobot.mecanumDrive_Cartesian(0, -0.3, 0, 0);
+			}
+			
+			else {
+				if (gyro.getAngle() <= 26) { 
+					//timerAutonomous.stop();
+					myRobot.mecanumDrive_Cartesian(0, 0, 1.0, 0);
+				}
+				else if(timerAutonomous.get() < 2.6 + 2.4 + 0.22) {
+					myRobot.mecanumDrive_Cartesian(0, -0.3, 0, 0);
+				}
+				else if(timerAutonomous.get() < 2.6 + 2.4 + 3 + 0.22)
+					myRobot.mecanumDrive_Cartesian(0, 0, 0, 0);
+				else if(timerAutonomous.get() < 2.6 + 2.3 + 3 + 2.3 + 0.22)
+					myRobot.mecanumDrive_Cartesian(0, 0.3, 0, 0);
+				else if(gyro.getAngle() <= 206)
+					myRobot.mecanumDrive_Cartesian(0, 0, 1.0, 0);
+				else {
+					myRobot.mecanumDrive_Cartesian(0, 0, 0, 0);
+					motorControlOnSwitch(ballFeeder, ballPickUp, true, false, 0.5, 0, true);
+					throwBall(ballThrow, true, 0.8);
+				}
+			break;
+			}
+			
+			case 5:
+				if(timerAutonomous.get() < 2.8)
+					myRobot.mecanumDrive_Cartesian(0, -0.3, 0, 0);
+				
+				else
+					myRobot.mecanumDrive_Cartesian(0, 0, 0, 0);
+			}
 	}
 
 	@Override
 	public void teleopInit() {
-		gyro = new ADXRS450_Gyro();
-		gyro.reset();
-		gearTimer.reset();
 		
 	}
 
 	@Override
 	public void teleopPeriodic() {
-		/*
-		SmartDashboard.putNumber("Gyro Angle:", gyro.getAngle()); //realtime feedback
+		
+		//SmartDashboard.putNumber("Gyro Angle:", gyro.getAngle()); //realtime feedback
 		
 		leftStickX = stick.getRawAxis(0); 
 		leftStickY = stick.getRawAxis(1); 
 		rightStickX = stick.getRawAxis(4);
+		//triggerL2 = stick.getRawAxis(2);
 		triggerR2 = stick.getRawAxis(3); 
 		
-		myRobot.mecanumDrive_Cartesian(leftStickX, leftStickY, rightStickX, kP * gyro.getAngle()); // 0 should be changed with gyro.getAngle() if we wish to do a field oriented drive.
+		myRobot.mecanumDrive_Cartesian(leftStickX, leftStickY, rightStickX, 0);
 		
 		buttonA = stick.getRawButton(1); //shoot (on button press)
 		buttonB = stick.getRawButton(2); //ball feed (on / off)
 		buttonX = stick.getRawButton(3); //ball collect (on / off)
-		buttonY = stick.getRawButton(4); //gear collection (on / off)
-		buttonRopeDown = stick.getRawButton(5); //button L1 will cause the rope motor make robot go down
-		buttonRopeUp = stick.getRawButton(6); //button R1 will cause the rope motor make robot go up
-		giveGear = stick.getRawButton(7); //button Back will make pneumatics drop the gear
-		takeGear = stick.getRawButton(8); //button Start will make pneumatics take the gear
+		triggerL1 = stick.getRawButton(5);
+		triggerR1 = stick.getRawButton(6);
 		
-			motorControlOnPress(ropeClimb, buttonRopeUp, forward, 1.0);
-			motorControlOnPress(ropeClimb, buttonRopeDown, backward, 1.0);
+			
+		//motorControlOnPress(ropeClimb, triggerL2 > 0.2, forward, 1.0);
+		motorControlOnPress(ropeClimb, triggerL1, backward, 1.0);
 
-			motorControlOnPress(ballThrow, buttonA, forward, 1.0); //basically a listener at this point
-			*/
-			gearControlOnPress(gearTake, buttonY, forward);
-			gearControlOnPress(gearTake, buttonY, backward);
-			/*
-			motorControlOnSwitch(ballPickUp, buttonX, false, 0.4);
-			motorControlOnSwitch(ballFeeder, buttonB, true, 0.4);
-			//gearControlPneumatics(solenoid, takeGear, forward);
-			//gearControlPneumatics(solenoid, giveGear, backward);
-		*/
-	}
-
-	public void testPeriodic() {
-		double[] defaultValue = new double[0]; //defaultValue array
-		double[] areas = table.getNumberArray("area", defaultValue); //area array
-		double[] centerXs = table.getNumberArray("centerX", defaultValue); //centerX array
-		
-		for (double a : areas) {
-			area = a;
-			SmartDashboard.putNumber("[Test] Area:", area); //for realtime feedback
-		}
-		for (double x : centerXs) {
-			centerX = x;
-			SmartDashboard.putNumber("[Test] Center X: ", centerX); //for realtime feedback
-		}
-		LiveWindow.run();
+		throwBall(ballThrow, triggerR1, 0.8);
+		motorControlOnSwitch(ballFeeder, ballPickUp, triggerR1, triggerR2 > 0.2, 0.4, 1.0, false);
 	}
 }

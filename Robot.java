@@ -64,9 +64,7 @@ public class Robot extends IterativeRobot {
 	boolean backward = false;
 	
 	//Top toplama ve beslemede on/off
-	boolean feedStartStop = false;
 	boolean pickupStartStop = false;
-	boolean throwStartStop = false;
 	
 	//Otonomda her seyi sirasiyla yapsin diye kullanilan booleanlar
 	boolean auto1 = true;
@@ -74,11 +72,12 @@ public class Robot extends IterativeRobot {
 	boolean auto3 = true;
 	boolean auto4 = true;
 	boolean auto5 = true;
+	boolean auto7 = true;
 
 	//Kullandigimiz timerlar
 	Timer timerAutonomous = new Timer();
 	Timer goTime = new Timer();
-	Timer feedThrow = new Timer();
+	//Timer feedThrow = new Timer();
 	
 	//Rope Climb & Ball Throw
 	public void motorControlOnPress(SpeedController controller, boolean isPressed, boolean forwardOrBackward, double speed) {
@@ -97,13 +96,7 @@ public class Robot extends IterativeRobot {
 			controller.set(-speed);
 		
 		else {
-			if(isPressed) {
-				throwStartStop = !throwStartStop;
-				feedThrow.reset();
-				feedThrow.start();
-			}
-			
-			if(throwStartStop)
+			if(isPressed)
 				controller.set(speed);
 			
 			else
@@ -111,30 +104,29 @@ public class Robot extends IterativeRobot {
 		}
 	}
 	
+	public void throwBallOtonom(SpeedController controller, SpeedController controller2, double speed, double speed2) {
+			controller.set(speed);
+			controller2.set(speed2);
+		}
 	
 	//Ball Feed & Ball Pickup
-	public void motorControlOnSwitch(SpeedController feed, SpeedController pickup, boolean feedIsPressed, boolean pickupIsPressed, double feedSpeed, double pickupSpeed, boolean feedAuto) {
+	public void motorControlOnSwitch(SpeedController feed, SpeedController pickup, boolean feedIsPressed, boolean pickupIsPressed, double feedSpeed, double pickupSpeed, boolean ters) {
 		//On/off yapiyor
-			if(buttonA)
+			if(ters)
 				feed.set(-feedSpeed);
 			
 			else if(feedIsPressed)
-				feedStartStop = !feedStartStop;
-			
-			if((feedThrow.get() >= 0.5 && feedStartStop) || (feedThrow.get() >= 0.5 && feedAuto))
 				feed.set(feedSpeed);
 			
 			else
 				feed.set(0.0);
 			
 			
-			if(buttonB)
-				pickup.set(-pickupSpeed);
 			
-			else if(pickupIsPressed)
+			if(pickupIsPressed)
 				pickupStartStop = !pickupStartStop;
 			
-			if(pickupStartStop && !buttonB)
+			if(pickupStartStop)
 				pickup.set(pickupSpeed);
 			
 			else
@@ -154,8 +146,9 @@ public class Robot extends IterativeRobot {
 
 		//Otonomda mod secme arayuzu olusturma
 		autoChooser = new SendableChooser();
-		autoChooser.addObject("bluenun solu/ redin sagi ama redde top atmiyor", 4); //degisecek
-		autoChooser.addDefault("direk duz gidiyor", 5); //degisecek
+		autoChooser.addObject("bluenun solu", 4);
+		autoChooser.addDefault("direk duz gidiyor", 5);
+		//autoChooser.addObject("redin solu", 6);
 		SmartDashboard.putData("Autonomous Mode Chooser", autoChooser);
 	}
 
@@ -185,7 +178,7 @@ public class Robot extends IterativeRobot {
 		}
 		
 		//NOT: caseleri switch halinde yazarsak daha temiz gorunur orn: switch(int a) case 1: ilk sey (bitince a++) case 2: ikinci sey.......
-		switch (mode) { //autoChooser.getSelected() 
+		switch (4) { //autoChooser.getSelected() 
 		/*case 1:
 			if(auto1) {
 				if(timerAutonomous.get() < 1.0) { //degisecek
@@ -311,29 +304,28 @@ public class Robot extends IterativeRobot {
 			break;
 */
 		case 4:
-			if(timerAutonomous.get() < 2.6) {
+			if(timerAutonomous.get() < 2.0) {
 				myRobot.mecanumDrive_Cartesian(0, -0.3, 0, 0);
 			}
 			
 			else {
-				if (gyro.getAngle() <= 26) { 
-					//timerAutonomous.stop();
+				if (timerAutonomous.get() < 2.0 + 0.42) { 
+					
 					myRobot.mecanumDrive_Cartesian(0, 0, 1.0, 0);
 				}
-				else if(timerAutonomous.get() < 2.6 + 2.4 + 0.22) {
+				else if(timerAutonomous.get() < 2.0 + 2.7  + 0.42) {
 					myRobot.mecanumDrive_Cartesian(0, -0.3, 0, 0);
 				}
-				else if(timerAutonomous.get() < 2.6 + 2.4 + 3 + 0.22)
+				else /*if(timerAutonomous.get() < 2.0 + 2.4 + 3 + 0.4)*/
 					myRobot.mecanumDrive_Cartesian(0, 0, 0, 0);
-				else if(timerAutonomous.get() < 2.6 + 2.3 + 3 + 2.3 + 0.22)
+				/*else if(timerAutonomous.get() < 2.0 + 2.4 + 3 + 2 + 0.33)
 					myRobot.mecanumDrive_Cartesian(0, 0.3, 0, 0);
-				else if(gyro.getAngle() <= 206)
+				else if(gyro.getAngle() <= 120)
 					myRobot.mecanumDrive_Cartesian(0, 0, 1.0, 0);
 				else {
 					myRobot.mecanumDrive_Cartesian(0, 0, 0, 0);
-					motorControlOnSwitch(ballFeeder, ballPickUp, true, false, 0.5, 0, true);
-					throwBall(ballThrow, true, 0.8);
-				}
+					throwBallOtonom(ballThrow, ballFeeder, 0.7, 0.5);
+				}*/
 			break;
 			}
 			
@@ -343,6 +335,36 @@ public class Robot extends IterativeRobot {
 				
 				else
 					myRobot.mecanumDrive_Cartesian(0, 0, 0, 0);
+				break;
+			/*case 6:
+				if(timerAutonomous.get() < 2.5) {
+					myRobot.mecanumDrive_Cartesian(0, -0.3, 0, 0);
+				}
+				else {
+					if (gyro.getAngle() >= -27) { 
+						//timerAutonomous.stop();
+						myRobot.mecanumDrive_Cartesian(0, 0, -1.0, 0);
+					}
+					else if(timerAutonomous.get() < 2.5 + 2.4 + 0.22) {
+						myRobot.mecanumDrive_Cartesian(0, -0.3, 0, 0);
+					}
+					else if(timerAutonomous.get() < 2.5 + 2.4 + 3 + 0.22)
+						myRobot.mecanumDrive_Cartesian(0, 0, 0, 0);
+					else if(timerAutonomous.get() < 2.5 + 2.4 + 3 + 2 + 0.22)
+						myRobot.mecanumDrive_Cartesian(0, 0.3, 0, 0);
+					
+					else if(gyro.getAngle() <= 120-54) {
+						myRobot.mecanumDrive_Cartesian(0, 0, 1.0, 0);
+						throwBallOtonom(ballThrow, ballFeeder, 0.6, 0);
+					}
+					else {
+						myRobot.mecanumDrive_Cartesian(0, 0, 0, 0);
+						throwBallOtonom(ballThrow, ballFeeder, 0.6, 0.5);
+					}
+				}
+				break;*/
+			default:
+				break;
 			}
 	}
 
@@ -355,6 +377,9 @@ public class Robot extends IterativeRobot {
 	public void teleopPeriodic() {
 		
 		//SmartDashboard.putNumber("Gyro Angle:", gyro.getAngle()); //realtime feedback
+		//SmartDashboard.putBoolean("Top Toplama: ", pickupStartStop);
+		//SmartDashboard.putBoolean("Top Besleme: ", feedStartStop);
+		//SmartDashboard.putBoolean("Top Atma: ", throwStartStop);
 		
 		leftStickX = stick.getRawAxis(0); 
 		leftStickY = stick.getRawAxis(1); 
@@ -362,7 +387,7 @@ public class Robot extends IterativeRobot {
 		//triggerL2 = stick.getRawAxis(2);
 		triggerR2 = stick.getRawAxis(3); 
 		
-		myRobot.mecanumDrive_Cartesian(leftStickX, leftStickY, rightStickX, 0);
+		myRobot.mecanumDrive_Cartesian(rightStickX, leftStickY, leftStickX, 0);
 		
 		buttonA = stick.getRawButton(1); //shoot (on button press)
 		buttonB = stick.getRawButton(2); //ball feed (on / off)
@@ -370,11 +395,11 @@ public class Robot extends IterativeRobot {
 		triggerL1 = stick.getRawButton(5);
 		triggerR1 = stick.getRawButton(6);
 		
-			
+		
 		//motorControlOnPress(ropeClimb, triggerL2 > 0.2, forward, 1.0);
 		motorControlOnPress(ropeClimb, triggerL1, backward, 1.0);
 
-		throwBall(ballThrow, triggerR1, 0.8);
-		motorControlOnSwitch(ballFeeder, ballPickUp, triggerR1, triggerR2 > 0.2, 0.4, 1.0, false);
+		throwBall(ballThrow, triggerR1, 0.7);
+		motorControlOnSwitch(ballFeeder, ballPickUp, triggerR1, triggerR2 > 0.2, 0.4, 1.0, buttonA);
 	}
 }

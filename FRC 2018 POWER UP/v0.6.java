@@ -133,8 +133,6 @@ public class Robot extends IterativeRobot {
 		
 		rotation = gyro.getAngle();
 		
-		
-		
 		//Getting values from the Joystick
 		rightStickX = -stick.getRawAxis(4);
 		leftStickY = stick.getRawAxis(1);
@@ -151,43 +149,6 @@ public class Robot extends IterativeRobot {
 		if(buttonA)
 			mult = 0.5;
 		
-		// lio code start
-		
-		/* ESKI
-		
-		if(rightStickX >= -0.1 && rightStickX <= 0.1) {
-			
-			// manual gyro normal drive class
-			
-			double fR = (leftStickX + leftStickY + rotation * 0.05);
-			double rR = -(leftStickX - leftStickY - rotation * 0.05);
-			double fL = -(-leftStickX + leftStickY - rotation * 0.05);
-			double rL = (-leftStickX - leftStickY + rotation * 0.05);
-			
-			// manual motor set cartesian drive class 
-			
-			frontRight.set(fR);
-			rearRight.set(rR);
-			frontLeft.set(fL);
-			rearLeft.set(rL);
-			
-			System.out.println("meow");
-			
-		}
-		
-		else {
-			
-			myRobot.driveCartesian(-leftStickX * mult, leftStickY * mult, rightStickX * mult);
-			//gyro.reset();
-			//myRobot.driveCartesian(leftStickX * mult, leftStickY * mult, 0, 0);
-			
-			System.out.println("hello");
-			
-		}
-	
-		ESKI */ 
-		
-		// YENI
 		
 		if(rightStickX < 0.05 && rightStickX > -0.05) {		
 			loop += 1;
@@ -231,72 +192,9 @@ public class Robot extends IterativeRobot {
 		else {
 			myRobot.driveCartesian(-leftStickX * mult, leftStickY * mult, rightStickX * mult);
 			loop = 0;
-			ng = true;
-			/*
-			if(buttonA) {
-				
-			
-				myRobot.driveCartesian(-leftStickX * mult, leftStickY * mult, mult, 0);
-				//myRobot.driveCartesian(leftStickX * mult, leftStickY * mult, 0, 0);
-				gyro.reset();
-				rotation = gyro.getAngle();
-				
-			}
-			
-			else if(buttonY) {
-				
-				myRobot.driveCartesian(-leftStickX * mult, leftStickY * mult, -mult, 0);
-				//myRobot.driveCartesian(leftStickX * mult, leftStickY * mult, 0, 0);
-				gyro.reset();
-				
-				
-			}
-			*/
-			
+			ng = true;	
 		}
 		
-		
-		//YENI
-		
-		// lio code end
-		
-		/*if(rightStickX > 0.5|| rightStickX < -0.5) {
-			gyro.reset();
-			if(rightStickX > 0.5) {
-				frontLeft.set(-rightStickX * mult);
-				rearLeft.set(rightStickX * mult);
-				frontRight.set(-rightStickX * mult * 0.8);
-				rearRight.set(rightStickX * mult * 0.8);
-			}
-			else {
-				frontLeft.set(-rightStickX * mult * 0.5);
-				rearLeft.set(rightStickX * mult * 0.5);
-				frontRight.set(-rightStickX * mult);
-				rearRight.set(rightStickX * mult);
-			}
-		}
-		else {
-			myRobot.driveCartesian(0, 0, 0);
-		}*/
-		
-		
-		// x - r - rcos   y - rsin
-		//myRobot.driveCartesian(leftStickX, leftStickY, 0);
-		//Move the robot
-		/*else {
-			if(gyro.getAngle() > 5) {
-				leftStickX -= (1 - 1 * Math.cos(gyro.getAngle() * Math.PI / 180) * kP);
-				leftStickY -= (1 * Math.sin(gyro.getAngle() * Math.PI / 180) * kP);
-			}
-			else if(gyro.getAngle() < -5) {
-				leftStickX += (1 - 1 * Math.cos(gyro.getAngle() * Math.PI / 180) * kP);
-				leftStickY += (1 * Math.sin(gyro.getAngle() * Math.PI / 180) * kP);
-			}
-			myRobot.driveCartesian(-leftStickX * mult, leftStickY * mult, 0);
-		}
-		//System.out.println(Math.cos(gyro.getAngle() * Math.PI / 180) + " " +  Math.sin(gyro.getAngle() * Math.PI / 180) + " " + gyro.getAngle() );
-		System.out.println(gyro.getAngle() + " " + leftStickX + " " + leftStickY);
-		*/
 		//Catapult Motor Backward
 		if(buttonB)
 			catapult.set(-1.0);
